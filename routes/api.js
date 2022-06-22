@@ -6,6 +6,11 @@ module.exports = function (app) {
   
   const translator = new Translator();
 
+  app.use(function(req, res, next) {
+    console.log(req.body, req.originalUrl, req.method);
+    next();
+  });
+  
   app.route('/api/translate')
     .post((req, res) => {
       let text = req.body.text;

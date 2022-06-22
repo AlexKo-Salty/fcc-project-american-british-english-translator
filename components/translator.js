@@ -7,15 +7,15 @@ const britishOnly = require('./british-only.js')
 class Translator {
     translate (text, locale)
     {
-        if (!text && !locale)
-        {
-            return "Required field(s) missing";
-        }
-        else if (!text)
+        if (text === '')
         {
             return "No text to translate";
         }
-        else if (!locale)
+        else if (!text || !locale)
+        {
+            return "Required field(s) missing";
+        }
+        else if (locale !== "american-to-british" && locale !== "british-to-american")
         {
             return "Invalid value for locale field";
         }
@@ -24,62 +24,99 @@ class Translator {
 
         textArray.forEach((word, index) => {
             let newWord;
-            //Handle three words convert
-            if (index > 2)
+            let isLastWithDot = false;
+            if (textArray.length === index + 1 && word.charAt(word.length - 1) === ".")
             {
-                let wholeWord = textArray[index - 2] + " " + textArray[index - 1] + " " + textArray[index];
+                word = word.slice(0, word.length -1);
+                isLastWithDot = true;
+            }
+            //Handle three words convert
+            if (index > 2 && !newWord)
+            {
+                let wholeWord = textArray[index - 2] + " " + textArray[index - 1] + " " + word;
                 newWord = this.findWords(wholeWord, locale);
+                if (index -2 === 0)
+                {
+                    newWord = newWord.charAt(0).toUpperCase() + newWord.slice(1)
+                }
+                if (newWord)
+                {
+                    translatedTextArray.push("");
+                    translatedTextArray.push("");
+                    translatedTextArray.splice(index -2, 2)
+                }
             }
             //Handle two words convert
-            if (index > 1)
+            if (index > 1 && !newWord)
             {
-                let wholeWord = textArray[index - 1] + " " + textArray[index];
+                let wholeWord = textArray[index - 1] + " " + word;
                 newWord = this.findWords(wholeWord, locale);
+                if (index -1 === 0)
+                {
+                    newWord = newWord.charAt(0).toUpperCase() + newWord.slice(1)
+                }
+                if (newWord)
+                {
+                    translatedTextArray.push("");
+                    translatedTextArray.splice(index - 1, 1)
+                }
             }
             //Handle one word convert
-            newWord = this.findWords(word, locale)
+            if (!newWord)
+            {
+                newWord = this.findWords(word, locale)
+            }
+            if (index === 0 && newWord)
+            {
+                newWord = newWord.charAt(0).toUpperCase() + newWord.slice(1)
+            }
             if (newWord)
             {
-                translatedTextArray.push('<span class="highlight">'+ newWord + '</span>')
+                translatedTextArray.push('<span class="highlight">'+ newWord + '</span>' + (isLastWithDot ? "." : ""))
                 return;
             }
             else
             {
-                translatedTextArray.push(word);
+                translatedTextArray.push(text.split(' ')[index]);
                 return;
             }
         });
 
-        return text.toLowerCase() === translatedTextArray.join(' ') ? "Everything looks good to me!" : translatedTextArray.join(' ') 
+        translatedTextArray = translatedTextArray.filter((a) => a);
+        return text.toLowerCase() === translatedTextArray.join(' ').toLowerCase() ? "Everything looks good to me!" : translatedTextArray.join(' ') 
     }
 
     findWords (text, locale)
     {
+        let USRegex = /^(0?[1-9]|1[0-2]):([0-5]\d)\s?$/
+        let UKRegex = /^(0?[1-9]|1[0-2])[.]([0-5]\d)\s?$/
         let result;
 
         if (locale === "american-to-british")
         {
             if (americanOnly.hasOwnProperty(text))
             {
-                result = americanOnly[key];
-                return; 
+                result = americanOnly[text];
             } else if (americanToBritishSpelling.hasOwnProperty(text))
             {
-                result = americanToBritishSpelling[key];
-                return;
+                result = americanToBritishSpelling[text];
             } 
             else if (americanToBritishTitles.hasOwnProperty(text))
             {
-                result = americanToBritishTitles[key];
-                return;
+                result = americanToBritishTitles[text];
+                result = result.charAt(0).toUpperCase() + result.slice(1);
             }
+            else if (USRegex.test(text))
+            {
+                result = text.replace(":", ".")
+            }
+            
         }
         else if (locale === "british-to-american")
         {
             if (britishOnly.hasOwnProperty(text))
             {
-                result = britishOnly[key];
-                return;
+                result = britishOnly[text];
             } 
             else if (Object.keys(americanToBritishSpelling).find(key => americanToBritishSpelling[key] === text))
             {
@@ -88,6 +125,11 @@ class Translator {
             else if (Object.keys(americanToBritishTitles).find(key => americanToBritishTitles[key] === text))
             {
                 result = Object.keys(americanToBritishTitles).find(key => americanToBritishTitles[key] === text)
+                result = result.charAt(0).toUpperCase() + result.slice(1);
+            }
+            else if (UKRegex.test(text))
+            {
+                result = text.replace(".", ":")
             }
         }
         
